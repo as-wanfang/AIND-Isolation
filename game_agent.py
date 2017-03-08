@@ -38,8 +38,24 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
-    raise NotImplementedError
-
+    if False:
+        if game.is_loser(player):
+            return float("-inf")
+        if game.is_winner(player):
+            return float("inf")
+        player_moves = float(len(game.get_legal_moves(player)))
+        opp_moves = float(len(game.get_legal_moves(game.get_opponent(player))))
+        return player_moves - 2 * opp_moves
+    if True:
+        # (myMoves - 3*opMoves) * filledSpaces
+        if game.is_loser(player):
+            return float("-inf")
+        if game.is_winner(player):
+            return float("inf")
+        player_moves = float(len(game.get_legal_moves(player)))
+        opp_moves = float(len(game.get_legal_moves(game.get_opponent(player))))
+        return (player_moves - opp_moves) * float((game.width*game.height - len(game.get_blank_spaces())))
+    #if False:
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -123,19 +139,30 @@ class CustomPlayer:
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
-
+        if not legal_moves:
+            return (-1, -1)
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
+            if self.iterative:
+                d = 1
+                while True:
+                    _, move = self.minimax(game, d, True) if self.method == "minimax" else self.alphabeta(game, d, True)
+                    d += 1
+            else:
+                _, move = self.minimax(game, self.search_depth, True) if self.method == "minimax" else self.alphabeta(game, self.search_depth, True)
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
             pass
 
         # Return the best move from the last completed search iteration
+        file = open('record.txt','a')
+        file.write('%s: (%s,%s)\n'%(game.move_count,move[0],move[1]))
+        file.close()
+        return move
         raise NotImplementedError
 
     def minimax(self, game, depth, maximizing_player=True):
@@ -173,6 +200,34 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
+        # Terminal Test
+        if game.is_winner(self):
+            return self.score(game, self), game.get_player_location(self)
+        if game.is_loser(self):
+            return self.score(game, self), (-1,-1)
+        # the two cases above covers situations where there is no legal moves for the active_player
+        if depth ==0:
+            return self.score(game, self), game.get_player_location(self)
+
+        if maximizing_player:
+            # guard against returning an invalid move as long as there are legal moves to choose from by initializing the current_location with the first legal move
+            current_location = game.get_legal_moves()[0]
+            bestV = float("-inf")
+            for a in game.get_legal_moves():
+                v, location = self.minimax(game.forecast_move(a), depth-1, False)
+                if v > bestV:
+                    bestV = v
+                    current_location = a
+            return bestV, current_location
+        else:
+            current_location = game.get_legal_moves()[0]
+            bestV = float("inf")
+            for a in game.get_legal_moves():
+                v, location = self.minimax(game.forecast_move(a), depth-1, True)
+                if v < bestV:
+                    bestV = v
+                    current_location = a
+            return bestV, current_location
         raise NotImplementedError
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
@@ -217,4 +272,36 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
+        # Terminal Test
+        if game.is_winner(self):
+            return self.score(game, self), game.get_player_location(self)
+        if game.is_loser(self):
+            return self.score(game, self), (-1,-1)
+        if depth ==0:
+            return self.score(game, self), game.get_player_location(self)
+
+        if maximizing_player:
+            current_location = (-1, -1)
+            bestV = float("-inf")
+            for a in game.get_legal_moves():
+                v, location = self.alphabeta(game.forecast_move(a), depth-1, alpha, beta, False)
+                if v > bestV:
+                    bestV = v
+                    current_location = a
+                if bestV >= beta:
+                    return bestV, current_location
+                alpha = max(alpha, bestV)
+            return bestV, current_location
+        else:
+            current_location = (-1, -1)
+            bestV = float("inf")
+            for a in game.get_legal_moves():
+                v, location = self.alphabeta(game.forecast_move(a), depth-1, alpha, beta, True)
+                if v < bestV:
+                    bestV = v
+                    current_location = a
+                if bestV <= alpha:
+                    return bestV, current_location
+                beta = min(beta, bestV)
+            return bestV, current_location
         raise NotImplementedError
