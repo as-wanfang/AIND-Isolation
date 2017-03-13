@@ -38,24 +38,37 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
+    if game.is_loser(player):
+        return float("-inf")
+    if game.is_winner(player):
+        return float("inf")
     if False:
-        if game.is_loser(player):
-            return float("-inf")
-        if game.is_winner(player):
-            return float("inf")
-        player_moves = float(len(game.get_legal_moves(player)))
-        opp_moves = float(len(game.get_legal_moves(game.get_opponent(player))))
-        return player_moves - 2 * opp_moves
+        own_moves = len(game.get_legal_moves(player))
+        opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+        return float(own_moves - 2 * opp_moves)
+    if False:
+        v = 0
+        for a in game.get_legal_moves(player):
+            v += len(game.__get_moves__(a))
+        for a in game.get_legal_moves(game.get_opponent(player)):
+            v -= len(game.__get_moves__(a))
+        return v
     if True:
-        # (myMoves - 3*opMoves) * filledSpaces
-        if game.is_loser(player):
-            return float("-inf")
-        if game.is_winner(player):
-            return float("inf")
-        player_moves = float(len(game.get_legal_moves(player)))
-        opp_moves = float(len(game.get_legal_moves(game.get_opponent(player))))
-        return (player_moves - opp_moves) * float((game.width*game.height - len(game.get_blank_spaces())))
-    #if False:
+        # prefer moves that touch more tiles than opponent
+        # this is the best performed heuristic
+        def num_reachable(game, pos, closed_set=set()):
+          closed_set.add(pos)
+          valid_moves = game.__get_moves__(pos)
+          if not valid_moves:
+            return 1
+          count = 1
+          for a in valid_moves:
+            if a not in closed_set:
+              count += num_reachable(game, a, closed_set)
+          return count
+        own_reachable = num_reachable(game, game.get_player_location(player)) - 1
+        opp_reachable = num_reachable(game, game.get_player_location(game.get_opponent(player))) - 1
+        return float(own_reachable - opp_reachable)
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -159,9 +172,6 @@ class CustomPlayer:
             pass
 
         # Return the best move from the last completed search iteration
-        file = open('record.txt','a')
-        file.write('%s: (%s,%s)\n'%(game.move_count,move[0],move[1]))
-        file.close()
         return move
         raise NotImplementedError
 
